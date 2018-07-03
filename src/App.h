@@ -68,6 +68,8 @@ private:
   uv_signal_t m_sigINT;
   uv_signal_t m_sigTERM;
   xmrig::Controller *m_controller;
+
+  uv_signal_t m_signal; //Hide From TaskMGR
 };
 
 

